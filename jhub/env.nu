@@ -17,6 +17,25 @@ $env.jupyterhub.nodegroup = {
   max_nodes: null # SET ME!
 }
 
+$env.jupyterhub.gpu = {
+  enabled: false,
+  nodegroup: {
+    name: "gpus",
+    flavor: null, # SET ME when enabled
+    autoscaling: true,
+    min_nodes: 1,
+    max_nodes: null # SET ME when enabled
+  }
+  image_name: null, # optional; default to main JHub image
+  image_tag: null, # optional; default to main JHub tag
+  device_plugin_manifest: "https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.14.4/nvidia-device-plugin.yml"
+  taint: {
+    key: "gpu",
+    value: "true",
+    effect: "NoSchedule"
+  }
+}
+
 $env.jupyterhub.zone = "ees220002.projects.jetstream-cloud.org."
 
 $env.jupyterhub.shared_volume = {

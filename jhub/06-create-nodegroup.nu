@@ -44,3 +44,52 @@ if not $ready {
   print $"[ [ ERROR ] Failed to create healthy nodegroup in ($timeout)"
   exit 1
 }
+
+let gpu = $env.jupyterhub.gpu
+
+if $gpu.enabled {
+  let gpu_nodegroup = $gpu.nodegroup
+
+  if $gpu_nodegroup.flavor == null {
+    print "[ ERROR ] GPU nodegroup flavor must be set when GPU support is enabled"
+    exit 1
+  }
+
+  if $gpu_nodegroup.max_nodes == null {
+    print "[ ERROR ] GPU nodegroup max_nodes must be set when GPU support is enabled"
+    exit 1
+  }
+
+  print $"[ INFO ] Creating GPU nodegroup ($gpu_nodegroup.name)"
+
+  (openstack coe nodegroup create $cluster_name $gpu_nodegroup.name
+    --node-count $gpu_nodegroup.min_nodes
+    --flavor $gpu_nodegroup.flavor
+    --labels $"auto_scaling_enabled=($gpu_nodegroup.autoscaling)"
+    --min-nodes $gpu_nodegroup.min_nodes
+    --max-nodes $gpu_nodegroup.max_nodes
+  )
+
+  let start = date now
+  let check_status = {|| (openstack coe nodegroup show $cluster_name $gpu_nodegroup.name -f yaml | from yaml).status }
+  mut ready = false
+  mut status = null
+
+  print $"[ INFO ] Wait for GPU nodegroup creation with timeout ($timeout)"
+
+  while not $ready and ((date now) - $start) < $timeout {
+    $status = do $check_status
+    $ready = $status == "CREATE_COMPLETE"
+    if $status == "CREATE_FAILED" {
+      print "[ ERROR ] GPU nodegroup creation failed!";
+      break
+    }
+    print $"[ INFO ] Time elapsed: ((date now) - $start)"
+    sleep 30sec
+  }
+
+  if not $ready {
+    print $"[ [ ERROR ] Failed to create healthy GPU nodegroup in ($timeout)"
+    exit 1
+  }
+}

@@ -37,6 +37,7 @@ let jhub_admins = $jhub.admins
 let cluster_name = $env.jupyterhub.cluster.name
 let image_name = $jhub.image_name | default $"unidata/($env.jupyterhub.cluster.name)"
 let image_tag = $jhub.image_tag
+let gpu = $env.jupyterhub.gpu
 let git_repos = $jhub.git_repos
 
 let user_placeholders = if ($jhub.user_placeholders | describe) != nothing {
@@ -101,7 +102,7 @@ let extraContainers = [{
   }
 }]
 
-let profileList = {
+let profileList = ({
   "Low": {
     display_name: "Low Power"
     description: "Up to 1 CPU, 4GiB RAM"
@@ -158,7 +159,32 @@ let profileList = {
       extra_containers: $extraContainers
     }
   }
-}
+} | if $gpu.enabled {
+  let gpu_image_name = $gpu.image_name | default $image_name
+  let gpu_image_tag = $gpu.image_tag | default $image_tag
+
+  $in | insert "GPU" {
+    display_name: "GPU"
+    description: "GPU-enabled Jupyter session"
+    kubespawner_override: {
+      image: $"($gpu_image_name):($gpu_image_tag)"
+      node_selector: {
+        capi.stackhpc.com/node-group: $gpu.nodegroup.name
+      }
+      extra_resource_limits: {
+        nvidia.com/gpu: "1"
+      }
+      tolerations: [
+        {
+          key: $gpu.taint.key
+          operator: "Equal"
+          value: $gpu.taint.value
+          effect: $gpu.taint.effect
+        }
+      ]
+    }
+  }
+} else { $in })
 
 let gitpuller = $git_repos
 | each {|r|

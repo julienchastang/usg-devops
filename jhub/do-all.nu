@@ -8,6 +8,8 @@ nu 03-install-ingress.nu;
 nu 04-create-arecord.nu;
 nu 05-cert-manager.nu;
 nu 06-create-nodegroup.nu;
+nu 06b-install-gpu-support.nu;
+nu 06c-taint-gpu-nodes.nu;
 nu 07-set-jhub-core-node.nu;
 nu 08-shared-user-volume.nu;
 nu 09-configure-helm-jhub.nu;
