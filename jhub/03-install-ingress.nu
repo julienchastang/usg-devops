@@ -26,7 +26,7 @@ helm upgrade --install traefik traefik/traefik
   exit 1
 }
 
-let timeout = 10min
+let timeout = 20min
 let start = date now
 mut ready = false
 mut ingress_ip = ""
