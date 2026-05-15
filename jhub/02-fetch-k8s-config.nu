@@ -6,6 +6,41 @@ source ./env.nu
 
 let cluster_name = $env.jupyterhub.cluster.name
 
+let timeout = 10min
+let start = date now
+mut ready = false
+mut api_address = ""
+
+print $"[ INFO ] Waiting for Kubernetes API healthz with timeout ($timeout)"
+
+while not $ready and ((date now) - $start) < $timeout {
+  let api_address_result = openstack coe cluster show $cluster_name -c api_address -f value | complete
+
+  if $api_address_result.exit_code == 0 {
+    $api_address = ($api_address_result.stdout | str trim)
+
+    if not ($api_address | is-empty) {
+      let healthz_result = curl -ksS --max-time 10 $"($api_address)/healthz" | complete
+
+      if $healthz_result.exit_code == 0 {
+        $ready = ($healthz_result.stdout | str trim) == "ok"
+      }
+    }
+  } else {
+    print "[ WARNING ] Failed to check cluster API address"
+  }
+
+  if not $ready {
+    print $"[ INFO ] Time elapsed ((date now) - $start)"
+    sleep 30sec
+  }
+}
+
+if not $ready {
+  print $"[ ERROR ] Kubernetes API healthz did not return ok in ($timeout)"
+  exit 1
+}
+
 print "[ INFO ] Fetching kubectl config file"
 
 cd /tmp/

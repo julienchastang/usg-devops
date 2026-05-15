@@ -25,27 +25,43 @@ print $"[ INFO ] Creating cluster: ($cluster.name)"
     $cluster.name
 )
 
-# Wait for cluster creation, or error on timeout
+# Wait for cluster API address, or error on timeout
 let timeout = 20min
 let start = date now
-let check_status = {|| (openstack coe cluster show $cluster.name -f yaml | from yaml).status }
+let check_status = {|| openstack coe cluster show $cluster.name -c status -f value | complete }
+let check_api_address = {|| openstack coe cluster show $cluster.name -c api_address -f value | complete }
 mut ready = false
 mut status = null
+mut api_address = ""
 
-print $"[ INFO ] Waiting for cluster creation with timeout ($timeout)"
+print $"[ INFO ] Waiting for cluster API address with timeout ($timeout)"
 
 while not $ready and ((date now) - $start) < $timeout {
-  $status = do $check_status
-  $ready = $status == "CREATE_COMPLETE"
-  if status == "CREATE_FAILED" {
-    print "[ ERROR ] Cluster creation failed!";
-    break
+  let status_result = do $check_status
+  if $status_result.exit_code == 0 {
+    $status = ($status_result.stdout | str trim)
+
+    if $status == "CREATE_FAILED" {
+      print "[ ERROR ] Cluster creation failed!"
+      exit 1
+    }
+  } else {
+    print "[ WARNING ] Failed to check cluster status"
   }
+
+  let api_address_result = do $check_api_address
+  if $api_address_result.exit_code == 0 {
+    $api_address = ($api_address_result.stdout | str trim)
+    $ready = not ($api_address | is-empty)
+  } else {
+    print "[ WARNING ] Failed to check cluster API address"
+  }
+
   print $"[ INFO ] Time elapsed ((date now) - $start)"
   sleep 30sec
 }
 
 if not $ready {
-  print $"[ ERROR ] Failed to create healthy cluster in ($timeout)"
+  print $"[ ERROR ] Failed to get cluster API address in ($timeout)"
   exit 1
 }
