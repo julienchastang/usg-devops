@@ -57,7 +57,7 @@ if not $advertises_gpu {
 print "[ INFO ] At least one GPU node advertises allocatable nvidia.com/gpu"
 print $"[ INFO ] Running GPU smoke test from ($smoke_test_manifest)"
 
-kubectl delete pod $smoke_test_pod --ignore-not-found --wait=true
+kubectl delete -f $smoke_test_manifest --ignore-not-found --wait=true
 kubectl apply -f $smoke_test_manifest
 
 if $env.LAST_EXIT_CODE != 0 {
