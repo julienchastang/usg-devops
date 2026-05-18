@@ -14,42 +14,63 @@ let smoke_test_pod = "gpu-nvidia-smi-test"
 
 print $"[ INFO ] Validating GPU nodes in nodegroup ($gpu_nodegroup)"
 
-let gpu_nodes = kubectl get nodes -l $gpu_label -o json
-| from json
-| get items
+let wait_timeout = 20min
+let poll_interval = 30sec
+let start = date now
+mut advertises_gpu = false
+mut gpu_nodes_found = false
+mut gpu_node_status = []
 
-if ($gpu_nodes | is-empty) {
-  print $"[ ERROR ] No nodes found for GPU nodegroup ($gpu_nodegroup)"
+print $"[ INFO ] Waiting up to ($wait_timeout) for GPU resource advertisement"
+
+while not $advertises_gpu and ((date now) - $start) < $wait_timeout {
+  let gpu_operator_namespace = kubectl get namespace gpu-operator --ignore-not-found -o name
+  | str trim
+
+  if ($gpu_operator_namespace | is-empty) {
+    print "[ WARN ] Namespace gpu-operator was not found"
+  } else {
+    print "[ INFO ] GPU Operator pod status"
+    kubectl -n gpu-operator get pods -o wide
+  }
+
+  let gpu_nodes = kubectl get nodes -l $gpu_label -o json
+  | from json
+  | get items
+
+  $gpu_nodes_found = not ($gpu_nodes | is-empty)
+
+  $gpu_node_status = ($gpu_nodes
+  | each {|node|
+      {
+        name: $node.metadata.name,
+        allocatable_gpu: ($node.status.allocatable | get -o "nvidia.com/gpu" | default "0")
+      }
+    })
+
+  if $gpu_nodes_found {
+    print "[ INFO ] GPU node allocatable resources"
+    print ($gpu_node_status | sort-by name)
+  } else {
+    print $"[ WARN ] No nodes found for GPU nodegroup ($gpu_nodegroup)"
+  }
+
+  $advertises_gpu = ($gpu_node_status
+  | any {|node| ($node.allocatable_gpu | into int) > 0 })
+
+  if not $advertises_gpu {
+    print $"[ INFO ] GPU resources not advertised yet; sleeping ($poll_interval)"
+    sleep $poll_interval
+  }
+}
+
+if not $gpu_nodes_found {
+  print $"[ ERROR ] No nodes found for GPU nodegroup ($gpu_nodegroup) after ($wait_timeout)"
   exit 1
 }
 
-let gpu_node_status = $gpu_nodes
-| each {|node|
-    {
-      name: $node.metadata.name,
-      allocatable_gpu: ($node.status.allocatable | get -i "nvidia.com/gpu" | default "0")
-    }
-  }
-
-print "[ INFO ] GPU node allocatable resources"
-print ($gpu_node_status | sort-by name)
-
-let advertises_gpu = $gpu_node_status
-| any {|node| ($node.allocatable_gpu | into int) > 0 }
-
-let gpu_operator_namespace = kubectl get namespace gpu-operator --ignore-not-found -o name
-| str trim
-
-if ($gpu_operator_namespace | is-empty) {
-  print "[ WARN ] Namespace gpu-operator was not found"
-} else {
-  print "[ INFO ] Namespace gpu-operator exists"
-  print "[ INFO ] GPU Operator pod status"
-  kubectl -n gpu-operator get pods -o wide
-}
-
 if not $advertises_gpu {
-  print "[ ERROR ] No GPU node advertises allocatable nvidia.com/gpu"
+  print $"[ ERROR ] No GPU node advertises allocatable nvidia.com/gpu after ($wait_timeout)"
   print "[ ERROR ] Verify the NVIDIA driver/runtime/toolkit and GPU Operator stack before running GPU pods"
   exit 1
 }
