@@ -28,7 +28,6 @@ $env.jupyterhub.gpu = {
   }
   image_name: null, # optional; default to main JHub image
   image_tag: null, # optional; default to main JHub tag
-  device_plugin_manifest: "https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.14.4/nvidia-device-plugin.yml"
   taint: {
     key: "gpu",
     value: "true",
