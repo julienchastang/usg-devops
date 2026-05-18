@@ -17,20 +17,9 @@ let cluster_name = $env.jupyterhub.cluster.name
 # Trim the trailing "." from the zone
 let dns = $"($cluster_name).($zone | str trim -r -c ".")"
 
-let ip_result = kubectl get svc -n ingress-traefik traefik -o jsonpath='{.status.loadBalancer.ingress[0].ip}' | complete
-
-if $ip_result.exit_code != 0 {
-  print "[ ERROR ] Failed to get load balancer IP"
-  print $ip_result
-  exit 1
-}
-
-let ip = ($ip_result.stdout | str trim)
-
-if ($ip | is-empty) or $ip == "<pending>" {
-  print "[ ERROR ] Load balancer IP is not ready"
-  exit 1
-}
+let ip = kubectl get svc -n ingress-traefik
+| detect columns
+| get 0.EXTERNAL-IP
 
 (openstack recordset create $zone $cluster_name
   --type A
