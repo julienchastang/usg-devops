@@ -3,7 +3,7 @@
 # Anything with a "SET ME!" comment *must* be set
 
 $env.jupyterhub.cluster = {
-  template: "kubernetes-1-30-jammy",
+  template: "kubernetes-1-30-jammy-fixed-labels",
   master: {count: 1, flavor: "m3.quad"},
   worker: {count: 1, flavor: "m3.quad"},
   autoscaling: "true",
