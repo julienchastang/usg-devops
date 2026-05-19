@@ -22,6 +22,7 @@ print $"[ INFO ] Creating nodegroup ($nodegroup.name)"
 
 # Wait for nodegroup creation, or error on timeout
 let timeout = 10min
+let gpu_timeout = 30min
 let start = date now
 let check_status = {|| (openstack coe nodegroup show $cluster_name $nodegroup.name -f yaml | from yaml).status }
 mut ready = false
@@ -75,9 +76,9 @@ if $gpu.enabled {
   mut ready = false
   mut status = null
 
-  print $"[ INFO ] Wait for GPU nodegroup creation with timeout ($timeout)"
+  print $"[ INFO ] Wait for GPU nodegroup creation with timeout ($gpu_timeout)"
 
-  while not $ready and ((date now) - $start) < $timeout {
+  while not $ready and ((date now) - $start) < $gpu_timeout {
     $status = do $check_status
     $ready = $status == "CREATE_COMPLETE"
     if $status == "CREATE_FAILED" {
@@ -89,7 +90,7 @@ if $gpu.enabled {
   }
 
   if not $ready {
-    print $"[ [ ERROR ] Failed to create healthy GPU nodegroup in ($timeout)"
+    print $"[ [ ERROR ] Failed to create healthy GPU nodegroup in ($gpu_timeout)"
     exit 1
   }
 }
