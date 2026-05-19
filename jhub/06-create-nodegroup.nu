@@ -69,6 +69,7 @@ if $gpu.enabled {
     --labels $"auto_scaling_enabled=($gpu_nodegroup.autoscaling)"
     --min-nodes $gpu_nodegroup.min_nodes
     --max-nodes $gpu_nodegroup.max_nodes
+    --docker-volume-size $gpu_nodegroup.docker_volume_size
   )
 
   let start = date now

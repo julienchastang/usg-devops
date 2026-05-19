@@ -24,6 +24,7 @@ $env.jupyterhub.gpu = {
     flavor: null, # SET ME when enabled
     autoscaling: true,
     min_nodes: 1,
+    docker_volume_size: 200,
     max_nodes: null # SET ME when enabled
   }
   image_name: null, # optional; default to main JHub image
