@@ -293,10 +293,6 @@ let scheduling = {
 
 let singleuser = {
   nodeSelector: { "capi.stackhpc.com/node-group": mediums },
-  extraContainers: ($extraContainers | upsert resources {
-      requests: { cpu: 250m, memory: "512Mi" }
-      limits: { cpu: 1, memory: "1G" }
-  }),
   extraEnv: {
     "NBGITPULLER_DEPTH": "0"
     "START_VIRTUAL_DESKTOP": "1"
