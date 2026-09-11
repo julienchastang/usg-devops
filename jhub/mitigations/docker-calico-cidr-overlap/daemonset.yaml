@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: DaemonSet
+
+metadata:
+  name: docker-calico-cidr-fix
+  namespace: kube-system
+
+spec:
+  selector:
+    matchLabels:
+      app: docker-calico-cidr-fix
+
+  template:
+    metadata:
+      labels:
+        app: docker-calico-cidr-fix
+
+    spec:
+      # Required so iptables operates on the node's network namespace.
+      hostNetwork: true
+
+      # This pod does not need Kubernetes API credentials.
+      automountServiceAccountToken: false
+
+      # Control-plane nodes are already tainted NoSchedule, so with no
+      # tolerations this naturally runs only on the worker nodes.
+      nodeSelector:
+        kubernetes.io/os: linux
+
+      containers:
+        - name: fix
+          image: unidata/docker-calico-cidr-fix:fall-2026
+          imagePullPolicy: IfNotPresent
+
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - NET_ADMIN
+
+          resources:
+            requests:
+              cpu: 5m
+              memory: 16Mi
+            limits:
+              cpu: 50m
+              memory: 64Mi
+
+          volumeMounts:
+            # iptables -w uses this lock to coordinate with other
+            # processes modifying iptables on the host.
+            - name: xtables-lock
+              mountPath: /run/xtables.lock
+
+      volumes:
+        - name: xtables-lock
+          hostPath:
+            path: /run/xtables.lock
+            type: FileOrCreate
