@@ -19,11 +19,16 @@ spec:
       # Required so iptables operates on the node's network namespace.
       hostNetwork: true
 
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+
       # This pod does not need Kubernetes API credentials.
       automountServiceAccountToken: false
 
-      # Control-plane nodes are already tainted NoSchedule, so with no
-      # tolerations this naturally runs only on the worker nodes.
+      # Run on Linux worker and control-plane nodes so the conflicting
+      # Docker MASQUERADE rule is removed everywhere.
       nodeSelector:
         kubernetes.io/os: linux
 
